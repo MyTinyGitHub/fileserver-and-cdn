@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/google/uuid"
@@ -72,12 +74,29 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	filename := fmt.Sprintf("%v.%v", videoID.String(), extension)
+	reader := make([]byte, 32)
+	_, err = rand.Read(reader)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Unable to generate random string", err)
+		return
+	}
+	encodedName := base64.RawURLEncoding.EncodeToString(reader)
+	filename := fmt.Sprintf("%v.%v", encodedName, extension)
 	filePath := filepath.Join(cfg.assetsRoot, filename)
 
-	fileWriter, _ := os.Create(filePath)
-	io.Copy(fileWriter, file)
+	fileWriter, err := os.Create(filePath)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Unable to create file", err)
+		return
+	}
+
 	defer fileWriter.Close()
+
+	_, err = io.Copy(fileWriter, file)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Unable to copy file", err)
+		return
+	}
 
 	thumbnailURl := fmt.Sprintf("http://localhost:8091/assets/%v", filename)
 	videoMetadata.ThumbnailURL = &thumbnailURl

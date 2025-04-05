@@ -3,4 +3,5 @@ out
 .env
 assets/
 samples/
+aws/
 .idea
