@@ -42,7 +42,6 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 	}
 
 	if videoMetadata.UserID != userID {
-		if videoMetadata.UserID != userID {
 		respondWithError(w, http.StatusUnauthorized, "Not authorized to upload the thumbnail", nil)
 		return
 	}
@@ -76,6 +75,20 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 
 	io.Copy(tmpFile, file)
 
+  fastStatPath, err := cfg.processVideoForFastStart(tmpFile.Name())
+  defer os.Remove(fastStatPath)
+
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Unable to fast start temp file", err)
+		return
+	}
+
+  tmpFile, err = os.Open(fastStatPath)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Unable to create temp file", err)
+		return
+	}
+
 	tmpFile.Seek(0, io.SeekStart)
 
 	reader := make([]byte, 32)
@@ -84,8 +97,15 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		respondWithError(w, http.StatusInternalServerError, "Unable to generate random string", err)
 		return
 	}
+
 	encodedName := base64.RawURLEncoding.EncodeToString(reader)
-	filename := fmt.Sprintf("%v.%v", encodedName, extension)
+	aspect, err := cfg.getVideoAspectRatio(tmpFile.Name())
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Unable to upload video", err)
+		return
+	}
+
+	filename := fmt.Sprintf("%v/%v.%v", aspect, encodedName, extension)
 
 	_, err = cfg.s3Client.PutObject(context.Background(),
 		&s3.PutObjectInput{
