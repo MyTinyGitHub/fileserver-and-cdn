@@ -75,15 +75,15 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 
 	io.Copy(tmpFile, file)
 
-  fastStatPath, err := cfg.processVideoForFastStart(tmpFile.Name())
-  defer os.Remove(fastStatPath)
+	fastStatPath, err := cfg.processVideoForFastStart(tmpFile.Name())
+	defer os.Remove(fastStatPath)
 
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Unable to fast start temp file", err)
 		return
 	}
 
-  tmpFile, err = os.Open(fastStatPath)
+	tmpFile, err = os.Open(fastStatPath)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Unable to create temp file", err)
 		return
@@ -121,9 +121,16 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	videoUrl := fmt.Sprintf("https://%v.s3.%v.amazonaws.com/%v", cfg.s3Bucket, cfg.s3Region, filename)
+	//videoUrl := fmt.Sprintf("https://%v.s3.%v.amazonaws.com/%v", cfg.s3Bucket, cfg.s3Region, filename)
+	videoUrl := fmt.Sprintf("%v,%v", cfg.s3Bucket, filename)
 	videoMetadata.VideoURL = &videoUrl
 	err = cfg.db.UpdateVideo(videoMetadata)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Unable to update video", err)
+		return
+	}
+
+	videoMetadata, err = cfg.dbVideoToSignedVideo(videoMetadata)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Unable to update video", err)
 		return

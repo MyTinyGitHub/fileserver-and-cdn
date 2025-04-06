@@ -22,12 +22,12 @@ func (cfg *apiConfig) handlerThumbnailGet(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-  file, err := os.ReadFile(*tn.ThumbnailURL)
-  if err != nil {
-    fmt.Printf("unable to read file: %v\n", err)
-  }
+	file, err := os.ReadFile(*tn.ThumbnailURL)
+	if err != nil {
+		fmt.Printf("unable to read file: %v\n", err)
+	}
 
-  contentType := "image/png"
+	contentType := "image/png"
 
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(file)))
